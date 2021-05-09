@@ -125,9 +125,10 @@ class App extends Component {
 
     for(let baseAsset of this.state.baseAssets){
       var currentSymbolContracts = [];
+      // baseAsset = baseAsset.toLowerCase();
       for (let suffix of deliverContractSuffixes){
         var contract = {
-          contractCode: baseAsset + '_' + suffix, 
+          contractCode: baseAsset + 'USD' + '_' + suffix, 
         };
         contracts.push(contract);
         currentSymbolContracts.push(contract);
@@ -167,9 +168,19 @@ class App extends Component {
   }
 
   handleData(data) {
-    var sendMessage = this.sendMessage;
-    var _this = this;
-    console.log(data);
+    let msg = JSON.parse(data);
+    console.log(msg);
+    // {"stream":"btcusd_perp@kline_1m","data":{"e":"kline","E":1620572682222,"s":"BTCUSD_PERP","k":{"t":1620572640000,"T":1620572699999,"s":"BTCUSD_PERP","i":"1m","f":130635899,"L":130636190,"o":"57348.5","c":"57360.9","h":"57369.2","l":"57348.5","v":"26894","n":292,"x":false,"q":"46.88853903","V":"10393","Q":"18.12090536","B":"0"}}}
+
+    var stream_data = msg.data;
+    // if(stream_data.s === undefined){
+    //   console.log(stream_data);
+    //   return;
+    // }
+    //var symbol = stream_data.s.toLowerCase();
+    var symbol = stream_data.ps + '_' + stream_data.ct;
+    this.updatePrice(symbol, parseFloat(stream_data.k.c));
+    //_this.updateOpenPrice(symbol, msg.tick.open);
     // data.arrayBuffer().then(function(compressedData){
     //   let text = pako.inflate(compressedData, {
     //     to: 'string'
@@ -308,7 +319,23 @@ class App extends Component {
     var symbols = this.state.symbols;
     var future_contracts = this.state.future_contracts;
     var symbolContracts = this.state.symbolContracts;
-    const refWebSocket = <Websocket url='wss://dstream.binance.com/stream?streams=btcusd_perp@kline_1m/btcusd_next_quarter@continuousKline_1m/btcusd_current_quarter@continuousKline_1m'
+
+    var channels = [];
+    for (let baseAsset of this.state.baseAssets) {
+      for(let suffix of ["perpetual", "next_quarter", "current_quarter"]){
+        var channel = `${baseAsset.toLowerCase()}usd_${suffix}@continuousKline_1m`;
+        channels.push(channel);
+      }
+    }
+
+    var strChannels = channels.join('/');
+    console.log(strChannels);
+    
+    //const refWebSocket = <Websocket url='wss://dstream.binance.com/stream?streams=btcusd_perp@kline_1m/btcusd_next_quarter@continuousKline_1m/btcusd_current_quarter@continuousKline_1m'
+    //const refWebSocket = <Websocket url='wss://dstream.binance.com/stream?streams=btcusd_perpetual@continuousKline_1m/btcusd_next_quarter@continuousKline_1m/btcusd_current_quarter@continuousKline_1m'
+    var wsUrl = 'wss://dstream.binance.com/stream?streams=' + strChannels
+    //var wsUrl = 'wss://dstream.binance.com/stream?streams=btcusd_perpetual@continuousKline_1m/btcusd_next_quarter@continuousKline_1m/btcusd_current_quarter@continuousKline_1m'
+    const refWebSocket = <Websocket url={wsUrl} 
       onMessage={this.handleData.bind(this)} debug={true}
       onOpen={this.handleOpen.bind(this)} 
       ref={Websocket => {
