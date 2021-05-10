@@ -36,7 +36,7 @@ class App extends Component {
       contract_code: "BTC_NQ", 
       symbol: "BTC"
     }];
-    var baseAssets = ['ETH', 'BTC'];
+    var baseAssets = ['ETH', 'BTC', 'LTC'];
     var symbols = ['ETH', 'BTC'];
     for(let symbol of symbols){
       prices[symbol] = null;
