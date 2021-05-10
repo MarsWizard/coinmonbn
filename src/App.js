@@ -180,6 +180,7 @@ class App extends Component {
     //var symbol = stream_data.s.toLowerCase();
     var symbol = stream_data.ps + '_' + stream_data.ct;
     this.updatePrice(symbol, parseFloat(stream_data.k.c));
+    this.updateOpenPrice(symbol, parseFloat(stream_data.k.o));
     //_this.updateOpenPrice(symbol, msg.tick.open);
     // data.arrayBuffer().then(function(compressedData){
     //   let text = pako.inflate(compressedData, {
@@ -323,7 +324,7 @@ class App extends Component {
     var channels = [];
     for (let baseAsset of this.state.baseAssets) {
       for(let suffix of ["perpetual", "next_quarter", "current_quarter"]){
-        var channel = `${baseAsset.toLowerCase()}usd_${suffix}@continuousKline_1m`;
+        var channel = `${baseAsset.toLowerCase()}usd_${suffix}@continuousKline_1d`;
         channels.push(channel);
       }
     }
