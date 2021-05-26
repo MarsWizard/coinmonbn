@@ -1,6 +1,8 @@
 import React, { Component } from 'react';
 import Websocket from 'react-websocket';
 import CompareView from './compareView';
+import { Chart } from "react-google-charts";
+
 const pako = require('pako');
 
 function precise(x, p=5) {
@@ -84,6 +86,8 @@ class App extends Component {
     this.updateOpenPrice = this.updateOpenPrice.bind(this);
     this.deliverySymbolsLoaded = this.deliverySymbolsLoaded.bind(this);
     this.subscribeDeliveryContracts = this.subscribeDeliveryContracts.bind(this);
+    this.fetchMarketData = this.fetchMarketData.bind(this);
+
   }
 
   queryFutureKlineData(symbol, peroid, from, to){
@@ -128,7 +132,9 @@ class App extends Component {
       // baseAsset = baseAsset.toLowerCase();
       for (let suffix of deliverContractSuffixes){
         var contract = {
+          pair: baseAsset + 'USD', 
           contractCode: baseAsset + 'USD' + '_' + suffix, 
+          contractType: suffix, 
         };
         contracts.push(contract);
         currentSymbolContracts.push(contract);
@@ -152,6 +158,18 @@ class App extends Component {
     this.setState({symbolContracts});
   }
 
+  fetchMarketData(pair, contractType, interval){
+      var url = new URL('https://dapi.binance.com/dapi/v1/continuousKlines');
+      var params = {
+          pair: pair, 
+          contractType: contractType, 
+          interval: interval, 
+          limit: 1500
+      };
+      Object.keys(params).forEach(key => url.searchParams.append(key, params[key]))
+      return fetch(url).then(response=>response.json())
+  }
+
   subscribeDeliveryContracts(){
     var symbols = this.state.symbols;
     for(let symbol of symbols){
@@ -169,7 +187,7 @@ class App extends Component {
 
   handleData(data) {
     let msg = JSON.parse(data);
-    console.log(msg);
+    // console.log(msg);
     // {"stream":"btcusd_perp@kline_1m","data":{"e":"kline","E":1620572682222,"s":"BTCUSD_PERP","k":{"t":1620572640000,"T":1620572699999,"s":"BTCUSD_PERP","i":"1m","f":130635899,"L":130636190,"o":"57348.5","c":"57360.9","h":"57369.2","l":"57348.5","v":"26894","n":292,"x":false,"q":"46.88853903","V":"10393","Q":"18.12090536","B":"0"}}}
 
     var stream_data = msg.data;
@@ -305,15 +323,56 @@ class App extends Component {
   }
 
   compareContracts(newContract, farContract){
-    console.log(newContract + ' vs ' + farContract);
+    // console.log(newContract);
+    var leftContractCode = newContract.contractCode;
+    var rightContractCode = farContract.contractCode
+    // console.log(leftContractCode + ' vs ' + rightContractCode);
+    var view = this;
+    var leftHistoricalData = null;
+    var rightHistoricalData = null;
+    this.fetchMarketData(newContract.pair, newContract.contractType, '1m').then(
+        // function(data){
+        //     const chartData = [['Currency Name', 'Currency Rate']]
+        //     for (let i = 0; i < data.length; i += 1) {
+        //         chartData.push([
+        //             new Date(data[i][0]), 
+        //             parseFloat(data[i][4]), 
+        //         ]);
+        //     };
+
+        //     view.setState({historyData: chartData});
+        // }
+        data => leftHistoricalData = data
+    ).then(()=>{return this.fetchMarketData(farContract.pair, farContract.contractType, '1m')})
+    .then(data => rightHistoricalData = data)
+    .then(function(){
+        console.log(leftHistoricalData);
+        console.log(rightHistoricalData);
+        var data = leftHistoricalData;
+            const chartData = [[
+                'Currency Name', 
+                //'Currency Rate', 
+                //'xxx', 
+                'rate'
+            ]]
+            for (let i = 0; i < data.length; i += 1) {
+                chartData.push([
+                    new Date(data[i][0]), 
+                    //parseFloat(data[i][4]), 
+                    //parseFloat(rightHistoricalData[i][4]), 
+                    parseFloat(data[i][4]) / parseFloat(rightHistoricalData[i][4]), 
+                ]);
+            };
+            view.setState({historyData: chartData});
+    });
     // this.compareView.setNearContract(newContract);
     // this.compareView.setFarContract(farContract);
     this.compareView.setContracts(newContract, farContract);
     var now = Date.now();
     var dailyStartTime = Math.floor(now / 1000 - 3600 * 24 * 14);
     var daylyEndTime = Math.floor(now / 1000);
-    this.queryFutureKlineData(newContract.contractCode, '1day', dailyStartTime, daylyEndTime);
-    this.queryFutureKlineData(farContract.contractCode, '1day', dailyStartTime, daylyEndTime);
+    // this.queryFutureKlineData(newContract.contractCode, '1day', dailyStartTime, daylyEndTime);
+    // this.queryFutureKlineData(farContract.contractCode, '1day', dailyStartTime, daylyEndTime);
   }
   
   render() {
@@ -329,8 +388,10 @@ class App extends Component {
       }
     }
 
+    
+
     var strChannels = channels.join('/');
-    console.log(strChannels);
+    // console.log(strChannels);
     
     //const refWebSocket = <Websocket url='wss://dstream.binance.com/stream?streams=btcusd_perp@kline_1m/btcusd_next_quarter@continuousKline_1m/btcusd_current_quarter@continuousKline_1m'
     //const refWebSocket = <Websocket url='wss://dstream.binance.com/stream?streams=btcusd_perpetual@continuousKline_1m/btcusd_next_quarter@continuousKline_1m/btcusd_current_quarter@continuousKline_1m'
@@ -384,6 +445,29 @@ class App extends Component {
         <CompareView ref={compareView => this.compareView=compareView} 
           futureWsClient={refWebSocket} 
           swapWsClient={this.ws_swap} />
+          <Chart
+  width={'600px'}
+  height={'400px'}
+  chartType="LineChart"
+  loader={<div>Loading Chart</div>}
+  data={this.state.historyData}
+  options={{
+    series: {
+      // Gives each series an axis name that matches the Y-axis below.
+      0: { axis: 'Price' },
+      1: { axis: 'Price' },
+      2: { axis: 'Rate' },
+    },
+    axes: {
+      // Adds labels to each axis; they don't have to match the axis names.
+      y: {
+        Price: { label: 'Price' },
+        Rate: { label: 'Rate' },
+      },
+    },
+  }}
+  rootProps={{ 'data-testid': '1' }}
+/>
       </div>
     );
   }
