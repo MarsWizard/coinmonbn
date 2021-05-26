@@ -3,8 +3,6 @@ import Websocket from 'react-websocket';
 import CompareView from './compareView';
 import { Chart } from "react-google-charts";
 
-const pako = require('pako');
-
 function precise(x, p=5) {
   return Number.parseFloat(x).toPrecision(p);
 }
@@ -288,66 +286,16 @@ class App extends Component {
     this.setState({openPrices});
   }
 
-  handleSwapReceive(data){
-    var _this = this;
-    data.arrayBuffer().then(function(compressedData){
-      let text = pako.inflate(compressedData, {
-        to: 'string'
-      });
-      let msg = JSON.parse(text);
-      if (msg.ping) {
-        _this.sendMessageSwap(JSON.stringify({
-          pong: msg.ping
-        }));
-      } else if (msg.tick) {
-        var m = msg.ch.match(/market\.(([\w]+)\-([\w+]+))\.kline\.(.*)/);
-        if(m){
-          var symbol = m[2];
-          var contractCode = m[1];
-          //console.log(symbol);
-          if(m[4] == '1day'){
-            _this.updateOpenPrice(contractCode, msg.tick.open);
-          }
-          _this.updatePrice(symbol, msg.tick.close);
-          _this.updatePrice(contractCode, msg.tick.close);
-        }
-          //console.log(msg);
-          // handle(msg);
-      else if (msg.req){
-        _this.compareView.updateData(msg);
-      }
-      } else {
-          //console.log(text);
-      }
-    });
-  }
-
   compareContracts(newContract, farContract){
-    // console.log(newContract);
-    var leftContractCode = newContract.contractCode;
-    var rightContractCode = farContract.contractCode
-    // console.log(leftContractCode + ' vs ' + rightContractCode);
     var view = this;
     var leftHistoricalData = null;
     var rightHistoricalData = null;
-    this.fetchMarketData(newContract.pair, newContract.contractType, '1m').then(
-        // function(data){
-        //     const chartData = [['Currency Name', 'Currency Rate']]
-        //     for (let i = 0; i < data.length; i += 1) {
-        //         chartData.push([
-        //             new Date(data[i][0]), 
-        //             parseFloat(data[i][4]), 
-        //         ]);
-        //     };
-
-        //     view.setState({historyData: chartData});
-        // }
-        data => leftHistoricalData = data
-    ).then(()=>{return this.fetchMarketData(farContract.pair, farContract.contractType, '1m')})
+    this.fetchMarketData(newContract.pair, newContract.contractType, '5m')
+    .then(data => leftHistoricalData = data)
+    .then(()=> {return new Promise(resolve => setTimeout(() => resolve(), 1000));})
+    .then(()=>{return this.fetchMarketData(farContract.pair, farContract.contractType, '5m')})
     .then(data => rightHistoricalData = data)
     .then(function(){
-        console.log(leftHistoricalData);
-        console.log(rightHistoricalData);
         var data = leftHistoricalData;
             const chartData = [[
                 'Currency Name', 
@@ -363,14 +311,16 @@ class App extends Component {
                     parseFloat(data[i][4]) / parseFloat(rightHistoricalData[i][4]), 
                 ]);
             };
-            view.setState({historyData: chartData});
+            // var historyData = google.visualization.arrayToDataTable(chartData);
+            view.setState({historyData: chartData})
+            //view.setState({historyData: historyData});
     });
     // this.compareView.setNearContract(newContract);
     // this.compareView.setFarContract(farContract);
-    this.compareView.setContracts(newContract, farContract);
-    var now = Date.now();
-    var dailyStartTime = Math.floor(now / 1000 - 3600 * 24 * 14);
-    var daylyEndTime = Math.floor(now / 1000);
+    // this.compareView.setContracts(newContract, farContract);
+    // var now = Date.now();
+    // var dailyStartTime = Math.floor(now / 1000 - 3600 * 24 * 14);
+    // var daylyEndTime = Math.floor(now / 1000);
     // this.queryFutureKlineData(newContract.contractCode, '1day', dailyStartTime, daylyEndTime);
     // this.queryFutureKlineData(farContract.contractCode, '1day', dailyStartTime, daylyEndTime);
   }
@@ -424,7 +374,7 @@ class App extends Component {
                     {precise(this.state.prices[value.contractCode])}
                     ({precise((this.state.prices[value.contractCode]/this.state.openPrices[value.contractCode]-1)*100, 3)}%)</td>
                   {symbolContracts[key].map((compareContract, index) => {
-                    return <td onClick={() => this.compareContracts(value, compareContract)}>
+                    return <td key={compareContract} onClick={() => this.compareContracts(value, compareContract)}>
                       {(this.state.prices[value.contractCode] - this.state.prices[compareContract.contractCode]).toFixed(4)}
                       ({(this.state.prices[value.contractCode] / this.state.prices[compareContract.contractCode]).toFixed(4)})
                       
@@ -436,12 +386,6 @@ class App extends Component {
           </table>
         })}
         {refWebSocket}
-        <Websocket url='wss://api.btcgateway.pro/swap-ws'
-            onMessage={this.handleSwapReceive.bind(this)} debug={true}
-            onOpen={this.handleSwapOpen.bind(this)} 
-            ref={Websocket => {
-              this.ws_swap = Websocket;
-            }}/>
         <CompareView ref={compareView => this.compareView=compareView} 
           futureWsClient={refWebSocket} 
           swapWsClient={this.ws_swap} />
@@ -452,18 +396,11 @@ class App extends Component {
   loader={<div>Loading Chart</div>}
   data={this.state.historyData}
   options={{
-    series: {
-      // Gives each series an axis name that matches the Y-axis below.
-      0: { axis: 'Price' },
-      1: { axis: 'Price' },
-      2: { axis: 'Rate' },
+    hAxis: {
+      title: 'Time',
     },
-    axes: {
-      // Adds labels to each axis; they don't have to match the axis names.
-      y: {
-        Price: { label: 'Price' },
-        Rate: { label: 'Rate' },
-      },
+    vAxis: {
+      title: 'Popularity',
     },
   }}
   rootProps={{ 'data-testid': '1' }}
