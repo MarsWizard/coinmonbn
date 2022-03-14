@@ -3,11 +3,23 @@ import ReactDOM from 'react-dom';
 import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
+import FutureCoinBasisView from './futureCoinBasisView';
 
 ReactDOM.render(
-  // <React.StrictMode>
-    <App />
-  // </React.StrictMode>
+  <React.StrictMode>
+    {/* <App /> */}
+    <FutureCoinBasisView asset='BTC' />
+    <FutureCoinBasisView asset='ETH' />
+    <FutureCoinBasisView asset='BNB' />
+    <FutureCoinBasisView asset='XRP' />
+    <FutureCoinBasisView asset='ADA' />
+    <FutureCoinBasisView asset='LUNA' />
+    <FutureCoinBasisView asset='SOL' />
+    <FutureCoinBasisView asset='DOT' />
+    <FutureCoinBasisView asset='DOGE' />
+    <FutureCoinBasisView asset='SHIB' />
+    <FutureCoinBasisView asset='LTC' />
+  </React.StrictMode>
   ,
   document.getElementById('root')
 );

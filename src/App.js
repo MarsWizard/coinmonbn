@@ -36,7 +36,7 @@ class App extends Component {
       contract_code: "BTC_NQ", 
       symbol: "BTC"
     }];
-    var baseAssets = ['ETH', 'BTC', 'LTC'];
+    var baseAssets = ['BTC', 'ETH', 'BNB', 'XRP', 'ADA', 'LUNA', 'SOL', 'DOT', 'DOGE', 'SHIB', 'LTC'];
     var symbols = ['ETH', 'BTC'];
     for(let symbol of symbols){
       prices[symbol] = null;
@@ -68,7 +68,7 @@ class App extends Component {
       future_contracts, 
       historyData, 
       currentPair,
-      contracts, 
+      contracts,
       symbolContracts, 
       openPrices, 
       baseAssets, 
@@ -374,7 +374,7 @@ class App extends Component {
                     {precise(this.state.prices[value.contractCode])}
                     ({precise((this.state.prices[value.contractCode]/this.state.openPrices[value.contractCode]-1)*100, 3)}%)</td>
                   {symbolContracts[key].map((compareContract, index) => {
-                    return <td key={compareContract} onClick={() => this.compareContracts(value, compareContract)}>
+                    return <td key={"CC"+key+compareContract.contractCode} onClick={() => this.compareContracts(value, compareContract)}>
                       {(this.state.prices[value.contractCode] - this.state.prices[compareContract.contractCode]).toFixed(4)}
                       ({(this.state.prices[value.contractCode] / this.state.prices[compareContract.contractCode]).toFixed(4)})
                       
