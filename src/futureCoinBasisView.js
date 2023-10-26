@@ -14,7 +14,7 @@ export default class FutureCoinBasisView extends Component {
     var baseAsset = this.props.asset;
     var channels = [];
     for (let suffix of ["perpetual", "next_quarter", "current_quarter"]) {
-      var channel = `${baseAsset.toLowerCase()}usd_${suffix}@continuousKline_1d`;
+      var channel = `${baseAsset.toLowerCase()}usd_${suffix}@continuousKline_1m`;
       channels.push(channel);
     }
     var strChannels = channels.join('/');
